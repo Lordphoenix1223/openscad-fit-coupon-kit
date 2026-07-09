@@ -1,0 +1,39 @@
+name: Repository Checks
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  file-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+
+      - name: Validate coupon files and README links
+        run: |
+          python - <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          root = pathlib.Path(".")
+          readme = root / "README.md"
+          text = readme.read_text(encoding="utf-8")
+          required = [
+              root / "coupons" / "m3_clearance_ladder.scad",
+              root / "coupons" / "rail_clearance_tester.scad",
+              root / "coupons" / "strap_slot_sampler.scad",
+              root / "docs" / "design-notes.md",
+              root / "examples" / "recommended-starting-values.md",
+          ]
+          missing = [str(path) for path in required if not path.exists()]
+          markdown_links = re.findall(r"\]\((\./[^)]+)\)", text)
+          missing.extend(link for link in markdown_links if not (root / link[2:]).exists())
+          if missing:
+              for item in missing:
+                  print(f"missing: {item}")
+              sys.exit(1)
+          PY
